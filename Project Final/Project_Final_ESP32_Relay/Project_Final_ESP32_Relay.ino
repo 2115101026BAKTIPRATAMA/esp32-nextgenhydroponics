@@ -4,15 +4,15 @@
 #include <WiFiUdp.h>
 #include <Wire.h>
 
-// Deklarasi SSID dan password WiFi
 const char* ssid = "Smart Green Garden";
 const char* password = "Sukasukakami";
 
-// Inisiasi Firebase
-#define FIREBASE_URL "https://next-gen-hydroponics-default-rtdb.asia-southeast1.firebasedatabase.app/"
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "pool.ntp.org", 28800);  // 28800 seconds = 8 hours
+
+#define FIREBASE_URL "https://research-nextgenhydroponics-default-rtdb.asia-southeast1.firebasedatabase.app/"
 Firebase firebase(FIREBASE_URL);
 
-// Definisi relay pin 
 #define PIN_RELAY_PENGURASAN_PIPA 4
 #define PIN_RELAY_POMPA_IRIGASI 5
 #define PIN_RELAY_DINAMO_PENGADUK 12
@@ -22,8 +22,6 @@ Firebase firebase(FIREBASE_URL);
 #define PIN_RELAY_PESTISIDA 16
 #define PIN_RELAY_SUMBER_AIR 17
 #define PIN_RELAY_GROW_LIGHT 18
-
-// Inisiasi sensor intensitas Cahaya
 #define LDR_PIN 19  
 
 void setup() {
@@ -39,7 +37,6 @@ void setup() {
   }
   Serial.println("Connected to WiFi");
 
-  // Inisiasi relay 
   pinMode(PIN_RELAY_PENGURASAN_PIPA, OUTPUT);
   digitalWrite(PIN_RELAY_PENGURASAN_PIPA, LOW); // Initialize relay as OFF
   pinMode(PIN_RELAY_POMPA_IRIGASI, OUTPUT);
@@ -58,104 +55,82 @@ void setup() {
   digitalWrite(PIN_RELAY_SUMBER_AIR, LOW); // Initialize relay as OFF
   pinMode(PIN_RELAY_GROW_LIGHT, OUTPUT);
   digitalWrite(PIN_RELAY_GROW_LIGHT, LOW); // Initialize relay as OFF
-
   pinMode(LDR_PIN, INPUT);
 }
 
 void loop() {
+  timeClient.update();
+  unsigned long epochTime = timeClient.getEpochTime();
+  struct tm *ptm = gmtime((time_t *)&epochTime);
 
-  int cek_controls_grow_light = firebase.getInt("esp32controls/controls_grow_light");
-// Baca nilai sensor LDR
-int val = analogRead(LDR_PIN);
+  int year = ptm->tm_year + 1900;
+  int month = ptm->tm_mon + 1;
+  int day = ptm->tm_mday;
+  int hour = ptm->tm_hour;
+  int minute = ptm->tm_min;
+  int second = ptm->tm_sec;
 
-if (cek_controls_grow_light == 1) {
-  Serial.println("Grow_light diotomatiskan");
-  String Status_grow_light = val >= 2000 ? "hidup" : "mati";
-  if (Status_grow_light == "hidup") {
-    digitalWrite(PIN_RELAY_GROW_LIGHT, HIGH);
+  char dateStr[11]; // YYYY-MM-DD
+  sprintf(dateStr, "%04d-%02d-%02d", year, month, day);
+  char timeStr[6]; // HH:MM
+  sprintf(timeStr, "%02d:%02d", hour, minute);
+
+  sendDataToFirebase(dateStr, timeStr);
+}
+
+void sendDataToFirebase(const char* dateStr, const char* timeStr) {
+  checkRelay("/esp32controls/relay_pengurasan_pipa", PIN_RELAY_PENGURASAN_PIPA, "RELAY_PENGURASAN_PIPA");
+  checkRelay("/esp32controls/relay_pompa_irigasi", PIN_RELAY_POMPA_IRIGASI, "RELAY_POMPA_IRIGASI");
+  checkRelay("/esp32controls/relay_dinamo_pengaduk", PIN_RELAY_DINAMO_PENGADUK, "RELAY_DINAMO_PENGADUK");
+  checkRelay("/esp32controls/relay_nutrisi_ab", PIN_RELAY_NUTRISI_AB, "RELAY_NUTRISI_AB");
+  checkRelay("/esp32controls/relay_ph_up", PIN_RELAY_PH_UP, "RELAY_PH_UP");
+  checkRelay("/esp32controls/relay_ph_down", PIN_RELAY_PH_DOWN, "RELAY_PH_DOWN");
+  checkRelay("/esp32controls/relay_sumber_air", PIN_RELAY_SUMBER_AIR, "RELAY_SUMBER_AIR");
+
+  int control_hama_otomatis = firebase.getInt("/esp32controls/controls_action");
+  if (control_hama_otomatis == 1){
+      Serial.println("Pestisida diotomatiskan");
+      String status_hama_path = "/esp32cam/" + String(dateStr) + "/" + String(timeStr) + "/status_hama";
+      if (status_hama_path == "true"){
+      firebase.setInt("esp32controls/relay_pompa_pestisida", 1);
+      }else{
+      firebase.setInt("esp32controls/relay_pompa_pestisida", 0);
+      }
   } else {
-    digitalWrite(PIN_RELAY_GROW_LIGHT, LOW);
+    Serial.println("Pestisida dimanualkan");
+      checkRelay("/esp32controls/relay_pompa_pestisida", PIN_RELAY_PESTISIDA, "RELAY_PESTISIDA");
   }
-  // Mengirim status grow light ke Firebase
-  bool result = firebase.setString("/esp32controls/status_grow_light", Status_grow_light);
-  Serial.println(result ? "Status berhasil diupdate" : "Gagal mengupdate status");
-} else {
-  // Kondisi manual yang bisa dikontrol pengguna
-  Serial.println("Grow_light dimanualkan");
-  String Status_grow_light_manual = firebase.getString("/esp32controls/status_grow_light");
-  Serial.println(Status_grow_light_manual); 
+  
+  int cek_controls_grow_light = firebase.getInt("esp32controls/controls_action");
+  int val = analogRead(LDR_PIN);
+  if (cek_controls_grow_light == 1) {
+    Serial.println("Grow_light diotomatiskan");
+    int Status_grow_light = val >= 2000 ? 1 : 0;
+    if (Status_grow_light == 1) {
+      digitalWrite(PIN_RELAY_GROW_LIGHT, HIGH);
+    } else {
+      digitalWrite(PIN_RELAY_GROW_LIGHT, LOW);
+    }
+    bool result = firebase.setInt("/esp32controls/relay_grow_light", Status_grow_light);
+    Serial.println(result ? "Status berhasil diupdate" : "Gagal mengupdate status");
+  } else {
+    Serial.println("Grow_light dimanualkan");
+    int Status_grow_light_manual = firebase.getInt("/esp32controls/relay_grow_light");
+    if(Status_grow_light_manual == 1){
+     digitalWrite(PIN_RELAY_GROW_LIGHT, HIGH);
+    } else {
+      digitalWrite(PIN_RELAY_GROW_LIGHT, LOW);
+    } 
+  }
 }
 
-
-
-  // Kirim data relay ke Firebase
-  sendDataToFirebase();
-}
-
-void sendDataToFirebase() {
-  // Dapatkan status relay dari Firebase 
-  int RELAY_PENGURASAN_PIPA = firebase.getInt("/esp32controls/relay_pengurasan_pipa");
-  if (RELAY_PENGURASAN_PIPA == 1) {
-    digitalWrite(PIN_RELAY_PENGURASAN_PIPA, HIGH);
-    Serial.println("RELAY_PENGURASAN_PIPA menyala");
-  } else if (RELAY_PENGURASAN_PIPA == 0) {
-    digitalWrite(PIN_RELAY_PENGURASAN_PIPA, LOW);
+void checkRelay(const char* firebasePath, int relayPin, const char* relayName) {
+  int relayState = firebase.getInt(firebasePath);
+  if (relayState == 1) {
+    digitalWrite(relayPin, HIGH);
+    Serial.print(relayName);
+    Serial.println(" menyala");
+  } else if (relayState == 0) {
+    digitalWrite(relayPin, LOW);
   }
-
-  int RELAY_POMPA_IRIGASI = firebase.getInt("/esp32controls/relay_pompa_irigasi");
-  if (RELAY_POMPA_IRIGASI == 1) {
-    digitalWrite(PIN_RELAY_POMPA_IRIGASI, HIGH);
-    Serial.println("RELAY_POMPA_IRIGASI menyala");
-  } else if (RELAY_POMPA_IRIGASI == 0) {
-    digitalWrite(PIN_RELAY_POMPA_IRIGASI, LOW);
-  }
-
-  int RELAY_DINAMO_PENGADUK = firebase.getInt("/esp32controls/relay_dinamo_pengaduk");
-  if (RELAY_DINAMO_PENGADUK == 1) {
-    digitalWrite(PIN_RELAY_DINAMO_PENGADUK, HIGH);
-    Serial.println("RELAY_DINAMO_PENGADUK menyala");
-  } else if (RELAY_DINAMO_PENGADUK == 0) {
-    digitalWrite(PIN_RELAY_DINAMO_PENGADUK, LOW);
-  }
-
-  int RELAY_NUTRISI_AB = firebase.getInt("/esp32controls/relay_nutrisi_ab");
-  if (RELAY_NUTRISI_AB == 1) {
-    digitalWrite(PIN_RELAY_NUTRISI_AB, HIGH);
-    Serial.println("RELAY_NUTRISI_AB menyala");
-  } else if (RELAY_NUTRISI_AB == 0) {
-    digitalWrite(PIN_RELAY_NUTRISI_AB, LOW);
-  }
-
-  int RELAY_PH_UP = firebase.getInt("/esp32controls/relay_ph_up");
-  if (RELAY_PH_UP == 1) {
-    digitalWrite(PIN_RELAY_PH_UP, HIGH);
-    Serial.println("RELAY_PH_UP menyala");
-  } else if (RELAY_PH_UP == 0) {
-    digitalWrite(PIN_RELAY_PH_UP, LOW);
-  }
-
-  int RELAY_PH_DOWN = firebase.getInt("/esp32controls/relay_ph_down");
-  if (RELAY_PH_DOWN == 1) {
-    digitalWrite(PIN_RELAY_PH_DOWN, HIGH);
-    Serial.println("RELAY_PH_DOWN menyala");
-  } else if (RELAY_PH_DOWN == 0) {
-    digitalWrite(PIN_RELAY_PH_DOWN, LOW);
-  }
-
-  int RELAY_PESTISIDA = firebase.getInt("/esp32controls/relay_pompa_pestisida");
-  if (RELAY_PESTISIDA == 1) {
-    digitalWrite(PIN_RELAY_PESTISIDA, HIGH);
-    Serial.println("RELAY_PESTISIDA menyala");
-  } else if (RELAY_PESTISIDA == 0) {
-    digitalWrite(PIN_RELAY_PESTISIDA, LOW);
-  }
-
-  int RELAY_SUMBER_AIR = firebase.getInt("/esp32controls/relay_sumber_air");
-  if (RELAY_SUMBER_AIR == 1) {
-    digitalWrite(PIN_RELAY_SUMBER_AIR, HIGH);
-    Serial.println("RELAY_SUMBER_AIR menyala");
-  } else if (RELAY_SUMBER_AIR == 0) {
-    digitalWrite(PIN_RELAY_SUMBER_AIR, LOW);
-  }
-
 }

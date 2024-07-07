@@ -9,7 +9,7 @@
 #include <Wire.h>
 
 //inisiasi firebase
-#define FIREBASE_URL "https://next-gen-hydroponics-default-rtdb.asia-southeast1.firebasedatabase.app/"
+#define FIREBASE_URL "https://research-nextgenhydroponics-default-rtdb.asia-southeast1.firebasedatabase.app/"
 Firebase firebase(FIREBASE_URL);
 
 //inisiasi sensor suhu air 
@@ -73,7 +73,7 @@ const char* password = "Sukasukakami";
 
 // Variabel untuk melacak waktu pengiriman terakhir
 unsigned long lastSendTime = 0;
-const unsigned long sendInterval = 1000; // Interval pengiriman 1 menit (60000 ms)
+const unsigned long sendInterval = 3000; // Interval pengiriman 1 menit (60000 ms)
 
 
 void setup() {
@@ -489,9 +489,13 @@ timeClient.update(); // Update time client to get the latest time
                                   }
                                 }
 
+                                
+
   }else {
-    //aksi di kontrol otomatis 
+    //aksi di kontrol manual
   }
+
+    
 }
 
 float readTdsSensor() {
