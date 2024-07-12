@@ -8,7 +8,7 @@
 #include <ArduinoJson.h>
 
 const char* ssid[] = {"WIFI1", "WIFI2"};
-const char* password[] = {"PASWORD"1, "PASWORD2"};
+const char* password[] = {"PASWORD1", "PASWORD2"};
 
 const char* status_ulat_global;
 const char* photo_detected_global;
