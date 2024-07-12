@@ -4,13 +4,13 @@
 #include <WiFiUdp.h>
 #include <Wire.h>
 
-const char* ssid = "Smart Green Garden";
-const char* password = "Sukasukakami";
+const char* ssid = "WIFI";
+const char* password = "PASSWORD";
 
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org", 28800);  // 28800 seconds = 8 hours
 
-#define FIREBASE_URL "https://research-nextgenhydroponics-default-rtdb.asia-southeast1.firebasedatabase.app/"
+#define FIREBASE_URL "URL DATABSE"
 Firebase firebase(FIREBASE_URL);
 
 #define PIN_RELAY_PENGURASAN_PIPA 4

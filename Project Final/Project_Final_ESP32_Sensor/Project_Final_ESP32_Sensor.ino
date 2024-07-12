@@ -9,7 +9,7 @@
 #include <Wire.h>
 
 //inisiasi firebase
-#define FIREBASE_URL "https://research-nextgenhydroponics-default-rtdb.asia-southeast1.firebasedatabase.app/"
+#define FIREBASE_URL "URL DATABSE"
 Firebase firebase(FIREBASE_URL);
 
 //inisiasi sensor suhu air 
@@ -68,12 +68,12 @@ WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org", 28800);  // 28800 seconds = 8 hours
 
 //inisiasi Wifi
-const char* ssid = "Smart Green Garden";
-const char* password = "Sukasukakami";
+const char* ssid = "WIFI";
+const char* password = "PASSWORD";
 
 // Variabel untuk melacak waktu pengiriman terakhir
 unsigned long lastSendTime = 0;
-const unsigned long sendInterval = 3000; // Interval pengiriman 1 menit (60000 ms)
+const unsigned long sendInterval = 10000; // Interval pengiriman 1 menit (60000 ms)
 
 
 void setup() {
@@ -220,8 +220,8 @@ timeClient.update(); // Update time client to get the latest time
 
     // Baca nilai sensor PH
     nilai_analog_ph = analogRead(ph_pin);
-    teganganph = 3.3 / 1024.0 * nilai_analog_ph;
-    PH_step = (PH4 - PH6) / 3;
+    teganganph = 3.3 / 4095.0 * nilai_analog_ph;
+    PH_step = (PH4 - PH6) / 4.0 - 6.0;
     po = 7.00 + ((PH6 - teganganph) / PH_step);
 
     // Baca nilai sensor TDS

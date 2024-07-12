@@ -7,13 +7,13 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 
-const char* ssid[] = {"WIFIKU", "Smart Green Garden"};
-const char* password[] = {"66993259", "Sukasukakami"};
+const char* ssid[] = {"WIFI1", "WIFI2"};
+const char* password[] = {"PASWORD"1, "PASWORD2"};
 
 const char* status_ulat_global;
 const char* photo_detected_global;
 
-#define FIREBASE_URL "https://research-nextgenhydroponics-default-rtdb.asia-southeast1.firebasedatabase.app/"
+#define FIREBASE_URL "URL DATABASE"
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org", 28800);
 void startCameraServer();
