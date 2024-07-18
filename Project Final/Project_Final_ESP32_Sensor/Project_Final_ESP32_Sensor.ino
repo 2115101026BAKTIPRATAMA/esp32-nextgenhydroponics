@@ -9,7 +9,7 @@
 #include <Wire.h>
 
 //inisiasi firebase
-#define FIREBASE_URL "URL DATABSE"
+#define FIREBASE_URL "URL DATABASE"
 Firebase firebase(FIREBASE_URL);
 
 //inisiasi sensor suhu air 
