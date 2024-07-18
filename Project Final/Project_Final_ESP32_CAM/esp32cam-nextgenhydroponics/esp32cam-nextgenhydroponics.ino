@@ -4,14 +4,9 @@
 #include "Base64.h"
 #include <NTPClient.h>
 #include <WiFiUdp.h>
-#include <HTTPClient.h>
-#include <ArduinoJson.h>
 
 const char* ssid[] = {"WIFI1", "WIFI2"};
-const char* password[] = {"PASWORD1", "PASWORD2"};
-
-const char* status_ulat_global;
-const char* photo_detected_global;
+const char* password[] = {"PASS1", "PASS2"};
 
 #define FIREBASE_URL "URL DATABASE"
 WiFiUDP ntpUDP;
@@ -202,58 +197,18 @@ void uploadPhotoToFirebase() {
   Serial.println("Mengunggah foto ke firebase...");
   String base64Photo = "data:image/png;base64," + encodebase64(fb->buf, fb->len);
   esp_camera_fb_return(fb);
-
-  String boundary = "--------------------------" + String(millis(), HEX);
-  String payload = "--" + boundary + "\r\n";
-  payload += "Content-Disposition: form-data; name=\"image_url\"\r\n\r\n";
-  payload += base64Photo + "\r\n";
-  payload += "--" + boundary + "--\r\n";
-  HTTPClient http;
-  http.begin("http://nextgen.dev.smartgreenovation.com/upload");
-  http.addHeader("Content-Type", "multipart/form-data; boundary=" + boundary);
-
-  int httpResponseCode = http.POST(payload);
-
-  delay(5000);
-
-  if (httpResponseCode > 0) {
-    Serial.print("Response HTTP API: ");
-    Serial.println(httpResponseCode);
-
-    String response = http.getString();
-
-    StaticJsonDocument<512> doc;
-
-    DeserializationError error = deserializeJson(doc, response);
-    if (error) {
-      Serial.print("deserializeJson() failed: ");
-      Serial.println(error.c_str());
-      return;
-    }
-
-    const char* status_ulat = doc["status_ulat"];
-    const char* photo_detected = doc["photo_detected"];
-    status_ulat_global=status_ulat;
-    photo_detected_global=photo_detected;
-
-    String jsonData = "{";
-    jsonData += "\"timestamp\":\"" + String(timeStamp) + "\",";
-    jsonData += "\"status_hama\":\"" + String(status_ulat_global) + "\",";
-    jsonData += "\"photo_original\":\"" + base64Photo + "\",";
-    jsonData += "\"photo_hama\":\"" + String(photo_detected_global) + "\"";
-    jsonData += "}";
-    String photoPath = "/esp32cam/" + String(currentDate) + "/" + String(currentTime);
-    if (firebase.setNum(photoPath, jsonData)) {
-      Serial.println("Foto berhasil diunggah ke Firebase.");
-    } else {
-      Serial.println("Gagal mengunggah.");
-    }
-
+  String jsonData = "{";
+  jsonData += "\"timestamp\":\"" + String(timeStamp) + "\",";
+  // jsonData += "\"status_hama\":\"" + "null" + "\",";
+  jsonData += "\"photo_original\":\"" + base64Photo + "\"";
+  // jsonData += "\"photo_hama\":\"" + "null" + "\"";
+  jsonData += "}";
+  String photoPath = "/esp32cam/" + String(currentDate) + "/" + String(currentTime);
+  if (firebase.setNum(photoPath, jsonData)) {
+    Serial.println("Foto berhasil diunggah ke Firebase.");
   } else {
-    Serial.print("Response HTTP API: ");
-    Serial.println(httpResponseCode);
+    Serial.println("Gagal mengunggah.");
   }
-  http.end();
 }
 
 String encodebase64(uint8_t* data, size_t len) {
